@@ -147,7 +147,7 @@ DMatrix* DMatrix::Load(const std::string& uri,
   if (dlm_pos != std::string::npos) {
     cache_file = uri.substr(dlm_pos + 1, uri.length());
     fname = uri.substr(0, dlm_pos);
-    std::cout << "fname:"<< fname << std::endl;
+//    std::cout << "fname:"<< fname << std::endl;
     CHECK_EQ(cache_file.find('#'), std::string::npos)
         << "Only one `#` is allowed in file path for cache file specification.";
     if (load_row_split) {
@@ -189,7 +189,7 @@ DMatrix* DMatrix::Load(const std::string& uri,
   }
   //DMLC_REGISTER_DATA_PARSER(uint32_t, csv, data::CreateCSVParser<uint32_t>);
 
-  DMLC_REGISTER_DATA_PARSER(uint32_t, My, dmlc::data::CreateMyParser<uint32_t>);
+//  DMLC_REGISTER_DATA_PARSER(uint32_t, My, dmlc::data::CreateMyParser<uint32_t>);
 //  std::cout << file_format<< std::endl;
   // legacy handling of binary data loading
   if (file_format == "auto" && npart == 1) {
