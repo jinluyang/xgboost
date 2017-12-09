@@ -25,7 +25,7 @@
 
 #include "eval.cpp"
 #include "timer.cpp"
-
+#include "trans.cpp"
 
 namespace xgboost {
 
@@ -80,6 +80,7 @@ struct CLIParam : public dmlc::Parameter<CLIParam> {
   std::vector<std::pair<std::string, std::string> > cfg;
   //added by jly
   int print_result;
+  int num_class;
 
   // declare parameters
   DMLC_DECLARE_PARAMETER(CLIParam) {
@@ -127,6 +128,7 @@ struct CLIParam : public dmlc::Parameter<CLIParam> {
     DMLC_DECLARE_FIELD(name_dump).set_default("dump.txt")
         .describe("Name of the output dump text file.");
     DMLC_DECLARE_FIELD(print_result).set_default(0).describe("print result");
+    DMLC_DECLARE_FIELD(num_class).set_default(2).describe("number of class");
     // alias
     DMLC_DECLARE_ALIAS(train_path, data);
     DMLC_DECLARE_ALIAS(test_path, test:data);
@@ -353,7 +355,7 @@ void CLIPredict(const CLIParam& param) {
         }
         std::cout << std::endl;
     }
-  evaluate(preds,labels,3);
+  evaluate(preds,labels,param.num_class);
   // force flush before fo destruct.
   os.set_stream(nullptr);
 }
@@ -406,17 +408,18 @@ std::vector<std::string> args = argv_to_args(argc,argv);
 
   for (int i = 0; i < argc-1; ++i) {
 //    char name[256], val[256];
-          std::cout << args[i]<< std::endl;
+//          std::cout << args[i]<< std::endl;
     if(args[i].compare("-r")==0)
         {
             i++;
-            cfg.push_back(std::make_pair("train_path",args[i]));
-          std::cout << args[i]<< std::endl;
+            std::string train_svm=convert_txt_libsvm(args[i]);
+            cfg.push_back(std::make_pair("train_path",train_svm));
             train = true;
         }
     else if(args[i].compare("-t")==0) {
             i++;
-            cfg.push_back(std::make_pair("test_path",args[i]));
+            std::string test_svm=convert_txt_libsvm(args[i]);
+            cfg.push_back(std::make_pair("test_path",test_svm));
             pred = true;
     } 
     else if(args[i].compare("-d")==0) {
