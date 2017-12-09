@@ -438,8 +438,7 @@ std::vector<std::string> args = argv_to_args(argc,argv);
     else if(args[i].compare("-p")==0) {
             i++;
             if (args[i]=="1")
-                print_result = 1;
-            cfg.push_back(std::make_pair("print_result",args[i]));
+                cfg.push_back(std::make_pair("print_result",args[i]));
     } 
 //    if (sscanf(argv[i], "%[^=]=%s", name, val) == 2) {
 //		std::cout << name << val << std::endl;

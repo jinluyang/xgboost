@@ -29,7 +29,6 @@ float evaluate(std::vector<xgboost::bst_float>y_pred,std::vector<xgboost::bst_fl
         }
         std::cout << std::endl;
     }
-    std::cout <<"prediction value"<< std::endl;
     return 0;
 
 }
