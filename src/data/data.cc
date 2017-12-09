@@ -11,6 +11,7 @@
 #include "./simple_csr_source.h"
 #include "../common/common.h"
 #include "../common/io.h"
+#include "../myparser.h"
 
 #if DMLC_ENABLE_STD_THREAD
 #include "./sparse_page_source.h"
@@ -146,11 +147,13 @@ DMatrix* DMatrix::Load(const std::string& uri,
   if (dlm_pos != std::string::npos) {
     cache_file = uri.substr(dlm_pos + 1, uri.length());
     fname = uri.substr(0, dlm_pos);
+    std::cout << "fname:"<< fname << std::endl;
     CHECK_EQ(cache_file.find('#'), std::string::npos)
         << "Only one `#` is allowed in file path for cache file specification.";
     if (load_row_split) {
       std::ostringstream os;
       std::vector<std::string> cache_shards = common::Split(cache_file, ':');
+      std::cout << "size of this:"<<cache_shards.size()<< std::endl;
       for (size_t i = 0; i < cache_shards.size(); ++i) {
         size_t pos = cache_shards[i].rfind('.');
         if (pos == std::string::npos) {
@@ -169,6 +172,7 @@ DMatrix* DMatrix::Load(const std::string& uri,
     }
   } else {
     fname = uri;
+//    std::cout<< "not load_row_split fname:"<< fname << std::endl;
   }
   int partid = 0, npart = 1;
   if (load_row_split) {
@@ -183,6 +187,10 @@ DMatrix* DMatrix::Load(const std::string& uri,
     LOG(CONSOLE) << "Load part of data " << partid
                  << " of " << npart << " parts";
   }
+  //DMLC_REGISTER_DATA_PARSER(uint32_t, csv, data::CreateCSVParser<uint32_t>);
+
+  DMLC_REGISTER_DATA_PARSER(uint32_t, My, dmlc::data::CreateMyParser<uint32_t>);
+//  std::cout << file_format<< std::endl;
   // legacy handling of binary data loading
   if (file_format == "auto" && npart == 1) {
     int magic;
@@ -201,19 +209,19 @@ DMatrix* DMatrix::Load(const std::string& uri,
         return dmat;
       }
     }
+  } else {
+//          std::cout <<"here"<< std::endl;
   }
 
   std::unique_ptr<dmlc::Parser<uint32_t> > parser(
       dmlc::Parser<uint32_t>::Create(fname.c_str(), partid, npart, file_format.c_str()));
+//      dmlc::data::MyParser<uint32_t>::Create(fname.c_str(), partid, npart, file_format.c_str()));
+//          std::cout <<"here2"<< std::endl;
   DMatrix* dmat = DMatrix::Create(parser.get(), cache_file);
   if (!silent) {
     LOG(CONSOLE) << dmat->info().num_row << 'x' << dmat->info().num_col << " matrix with "
                  << dmat->info().num_nonzero << " entries loaded from " << uri;
   }
-  /* sync up number of features after matrix loaded.
-   * partitioned data will fail the train/val validation check 
-   * since partitioned data not knowing the real number of features. */
-  rabit::Allreduce<rabit::op::Max>(&dmat->info().num_col, 1);
   // backward compatiblity code.
   if (!load_row_split) {
     MetaInfo& info = dmat->info();

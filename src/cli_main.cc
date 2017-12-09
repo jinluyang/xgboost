@@ -21,6 +21,9 @@
 #include <vector>
 #include "./common/sync.h"
 #include "./common/config.h"
+#include <iostream>
+
+#include "eval.cpp"
 
 
 namespace xgboost {
@@ -162,7 +165,7 @@ void CLITrain(const CLIParam& param) {
   }
   // load in data.
   std::shared_ptr<DMatrix> dtrain(
-      DMatrix::Load(param.train_path, param.silent != 0, param.dsplit == 2));
+      DMatrix::Load(param.train_path, param.silent != 0, param.dsplit == 2/*,"My"*/));
   std::vector<std::shared_ptr<DMatrix> > deval;
   std::vector<std::shared_ptr<DMatrix> > cache_mats;
   std::vector<DMatrix*> eval_datasets;
@@ -325,6 +328,8 @@ void CLIPredict(const CLIParam& param) {
     LOG(CONSOLE) << "start prediction...";
   }
   std::vector<bst_float> preds;
+  auto dmat = dtest.get();
+  auto labels= dmat->info().labels;
   learner->Predict(dtest.get(), param.pred_margin, &preds, param.ntree_limit);
   if (param.silent == 0) {
     LOG(CONSOLE) << "writing prediction to " << param.name_pred;
@@ -334,29 +339,48 @@ void CLIPredict(const CLIParam& param) {
   dmlc::ostream os(fo.get());
   for (bst_float p : preds) {
     os << p << '\n';
+//    std::cout << p<< std::endl;
   }
+  evaluate(preds,labels,3);
   // force flush before fo destruct.
   os.set_stream(nullptr);
 }
+std::string train_help()
+{
+    return std::string(
+"usage: ./xgboost [<options>] \n"
+"\n"
+"options:\n"
+"     -r <Training data file>\n"
+"     -t <Testing data file >\n"
+"     -d <Number of attributes constructing a record>\n"
+"     -c <Number of classes>\n"
+"     -s <Number of training records in the training data file>\n"
+"     -m <Number of testing records in the testing data file>\n"
+"     -p <printing the prediction results or not, 1 or 0>\n"
+);
+}
 
 int CLIRunTask(int argc, char *argv[]) {
-  if (argc < 2) {
-    printf("Usage: <config>\n");
+  if (argc < 6) {
+    throw std::invalid_argument(train_help());
     return 0;
   }
   rabit::Init(argc, argv);
 
   std::vector<std::pair<std::string, std::string> > cfg;
   cfg.push_back(std::make_pair("seed", "0"));
-
+//std::cout << argv[1]<< std::endl;
   common::ConfigIterator itr(argv[1]);
   while (itr.Next()) {
     cfg.push_back(std::make_pair(std::string(itr.name()), std::string(itr.val())));
   }
+  cfg.push_back(std::make_pair("objective","multi:softmax"));
 
   for (int i = 2; i < argc; ++i) {
     char name[256], val[256];
     if (sscanf(argv[i], "%[^=]=%s", name, val) == 2) {
+		std::cout << name << val << std::endl;
       cfg.push_back(std::make_pair(std::string(name), std::string(val)));
     }
   }
