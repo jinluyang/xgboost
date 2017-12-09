@@ -22,7 +22,7 @@ float evaluate(std::vector<xgboost::bst_float>y_pred,std::vector<xgboost::bst_fl
     std::cout << std::endl;
     for ( i=0;i<num_class;i++)
     {
-        std::cout <<i<<"|";
+        std::cout<<"prediction value      " <<i<<"|";
         for (int j=0;j<num_class;j++)
         {
             std::cout << conf_mat[i][j]<< " |";

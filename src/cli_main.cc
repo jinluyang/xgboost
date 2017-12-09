@@ -402,7 +402,6 @@ std::vector<std::string> args = argv_to_args(argc,argv);
   cfg.push_back(std::make_pair("num_round","20"));
   cfg.push_back(std::make_pair("silent","1"));
 
-  int print_result=0;
   bool train,pred;
 
   for (int i = 0; i < argc-1; ++i) {
