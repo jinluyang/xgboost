@@ -24,6 +24,7 @@
 #include <iostream>
 
 #include "eval.cpp"
+#include "timer.cpp"
 
 
 namespace xgboost {
@@ -77,6 +78,8 @@ struct CLIParam : public dmlc::Parameter<CLIParam> {
   std::vector<std::string> eval_data_names;
   /*! \brief all the configurations */
   std::vector<std::pair<std::string, std::string> > cfg;
+  //added by jly
+  int print_result;
 
   // declare parameters
   DMLC_DECLARE_PARAMETER(CLIParam) {
@@ -123,6 +126,7 @@ struct CLIParam : public dmlc::Parameter<CLIParam> {
         .describe("Name of the feature map file.");
     DMLC_DECLARE_FIELD(name_dump).set_default("dump.txt")
         .describe("Name of the output dump text file.");
+    DMLC_DECLARE_FIELD(print_result).set_default(0).describe("print result");
     // alias
     DMLC_DECLARE_ALIAS(train_path, data);
     DMLC_DECLARE_ALIAS(test_path, test:data);
@@ -341,6 +345,14 @@ void CLIPredict(const CLIParam& param) {
     os << p << '\n';
 //    std::cout << p<< std::endl;
   }
+  if (param.print_result)
+    {
+        std::cout << "printing result"<< std::endl;
+        for (bst_float p : preds) {
+            std::cout<< p<< " ";
+        }
+        std::cout << std::endl;
+    }
   evaluate(preds,labels,3);
   // force flush before fo destruct.
   os.set_stream(nullptr);
@@ -360,6 +372,14 @@ std::string train_help()
 "     -p <printing the prediction results or not, 1 or 0>\n"
 );
 }
+std::vector<std::string>
+argv_to_args(int const argc, char const * const * const argv)
+{
+    std::vector<std::string> args;
+    for(int i = 1; i < argc; ++i)
+        args.emplace_back(argv[i]);
+    return args;
+}
 
 int CLIRunTask(int argc, char *argv[]) {
   if (argc < 6) {
@@ -367,31 +387,96 @@ int CLIRunTask(int argc, char *argv[]) {
     return 0;
   }
   rabit::Init(argc, argv);
+std::vector<std::string> args = argv_to_args(argc,argv);
 
   std::vector<std::pair<std::string, std::string> > cfg;
   cfg.push_back(std::make_pair("seed", "0"));
 //std::cout << argv[1]<< std::endl;
-  common::ConfigIterator itr(argv[1]);
-  while (itr.Next()) {
-    cfg.push_back(std::make_pair(std::string(itr.name()), std::string(itr.val())));
-  }
+//  common::ConfigIterator itr(argv[1]);
+//  while (itr.Next()) {
+//    cfg.push_back(std::make_pair(std::string(itr.name()), std::string(itr.val())));
+//  }
   cfg.push_back(std::make_pair("objective","multi:softmax"));
+  cfg.push_back(std::make_pair("model_out","out.model"));
+  cfg.push_back(std::make_pair("model_in","out.model"));
+  cfg.push_back(std::make_pair("num_round","20"));
+  cfg.push_back(std::make_pair("silent","1"));
 
-  for (int i = 2; i < argc; ++i) {
-    char name[256], val[256];
-    if (sscanf(argv[i], "%[^=]=%s", name, val) == 2) {
-		std::cout << name << val << std::endl;
-      cfg.push_back(std::make_pair(std::string(name), std::string(val)));
-    }
+  int print_result=0;
+  bool train,pred;
+
+  for (int i = 0; i < argc-1; ++i) {
+//    char name[256], val[256];
+          std::cout << args[i]<< std::endl;
+    if(args[i].compare("-r")==0)
+        {
+            i++;
+            cfg.push_back(std::make_pair("train_path",args[i]));
+          std::cout << args[i]<< std::endl;
+            train = true;
+        }
+    else if(args[i].compare("-t")==0) {
+            i++;
+            cfg.push_back(std::make_pair("test_path",args[i]));
+            pred = true;
+    } 
+    else if(args[i].compare("-d")==0) {
+            i++;
+//            cfg.push_back(std::make_pair("",args[i]));
+    } 
+    else if(args[i].compare("-c")==0) {
+            i++;
+            cfg.push_back(std::make_pair("num_class",args[i]));
+    } 
+    else if(args[i].compare("-s")==0) {
+            i++;
+//            cfg.push_back(std::make_pair("train_path",args[i]));
+    } 
+    else if(args[i].compare("-m")==0) {
+            i++;
+//            cfg.push_back(std::make_pair("train_path",args[i]));
+    } 
+    else if(args[i].compare("-p")==0) {
+            i++;
+            if (args[i]=="1")
+                print_result = 1;
+            cfg.push_back(std::make_pair("print_result",args[i]));
+    } 
+//    if (sscanf(argv[i], "%[^=]=%s", name, val) == 2) {
+//		std::cout << name << val << std::endl;
+//      cfg.push_back(std::make_pair(std::string(name), std::string(val)));
+//    }
   }
+  Timer timer;
+  float time;
+  if (train)
+  {
+  timer.tic();
+          std::cout<< "training"<< std::endl;
+    cfg.push_back(std::make_pair("task","train"));
   CLIParam param;
   param.Configure(cfg);
-
-  switch (param.task) {
-    case kTrain: CLITrain(param); break;
-    case kDumpModel: CLIDumpModel(param); break;
-    case kPredict: CLIPredict(param); break;
+    CLITrain(param);
+   time = timer.toc();
+   std::cout << "training took:"<< time<<"sec"<< std::endl;
   }
+  
+  if (pred)
+  {
+  timer.tic();
+      std::cout<< "predicting"<< std::endl;
+    cfg.push_back(std::make_pair("task","pred"));
+  CLIParam param;
+  param.Configure(cfg);
+    CLIPredict(param);
+   time = timer.toc();
+   std::cout << "predicting took:"<< time<<"sec"<< std::endl;
+  }
+//  switch (param.task) {
+//    case kTrain: CLITrain(param); break;
+//    case kDumpModel: CLIDumpModel(param); break;
+//    case kPredict: CLIPredict(param); break;
+//  }
   rabit::Finalize();
   return 0;
 }
